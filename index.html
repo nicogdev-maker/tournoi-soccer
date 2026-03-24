@@ -2,59 +2,56 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Tournoi Robots</title>
+<title>Tournoi Robots - Exempt Correct</title>
 <style>
-body { font-family: Arial; padding: 20px; }
-h2 { margin-top: 30px; }
-button { margin: 5px; padding: 5px 10px; cursor: pointer; }
-.match { border: 1px solid #ccc; padding: 10px; margin: 5px; }
-.winner { background: #c8f7c5; }
-.container { display: flex; gap: 20px; flex-wrap: wrap; }
-.column { min-width: 300px; }
+body { font-family: Arial; background: #0f172a; color: white; padding: 20px; }
+h1, h2 { text-align: center; }
+button { margin: 5px; padding: 8px 14px; cursor: pointer; border: none; border-radius: 6px; background: #2563eb; color: white; }
+button:hover { background: #1d4ed8; }
+.bracket { display: flex; gap: 30px; overflow-x: auto; padding: 10px; }
+.round { min-width: 200px; }
+.match { background: #1e293b; border-radius: 10px; padding: 10px; margin: 15px 0; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+.team { padding: 8px; margin: 4px 0; border-radius: 6px; background: #334155; cursor: pointer; }
+.team:hover { background: #475569; }
+.winner { background: #22c55e !important; font-weight: bold; }
+.disabled { pointer-events: none; opacity: 0.5; }
+.final { border: 2px solid gold; background: #78350f; }
+.controls { text-align: center; margin-bottom: 20px; }
 </style>
 </head>
-
 <body>
 
 <h1>🤖 Tournoi de robots</h1>
 
-<h2>Équipes</h2>
-<div style="margin-bottom: 15px;">
-  <h3>Ajouter équipes manuellement</h3>
+<div class="controls">
   <input id="teamName" placeholder="Nom équipe">
   <button onclick="addTeam()">Ajouter</button>
-</div>
-
-<div style="margin-bottom: 15px;">
-  <h3>Ou générer des équipes</h3>
-  <input id="teamCount" type="number" min="2" max="32" value="4" placeholder="Nombre d'équipes">
+  <input id="teamCount" type="number" min="2" max="32" value="4">
   <button onclick="generateTeams()">Générer équipes</button>
-  <button onclick="clearTeams()" style="background-color: #ffcccb;">Effacer tout</button>
+  <button onclick="clearTeams()" style="background-color:#ff4444;">Effacer tout</button>
+  <button onclick="generateTournament()">🎲 Générer tournoi</button>
+  <button onclick="toggleFullscreen()">📺 Plein écran</button>
 </div>
 
 <ul id="teamList"></ul>
 
-<button onclick="generateTournament()">🎲 Générer le tournoi</button>
+<h2>Tour initial</h2>
+<div id="initial" class="bracket"></div>
 
-<div class="container">
-  <div class="column">
-    <h2>Tour initial</h2>
-    <div id="initial"></div>
-  </div>
-  <div class="column">
-    <h2>Poule haute</h2>
-    <div id="high"></div>
-  </div>
-  <div class="column">
-    <h2>Poule basse</h2>
-    <div id="low"></div>
-  </div>
-</div>
+<h2>🟢 Poule haute</h2>
+<div id="high" class="bracket"></div>
+
+<h2>🔴 Poule basse</h2>
+<div id="low" class="bracket"></div>
+
+<h2>🏆 GRANDE FINALE</h2>
+<div id="final" class="bracket"></div>
 
 <script>
-let teams = JSON.parse(localStorage.getItem("teams") || "[]");
-let matches = JSON.parse(localStorage.getItem("matches") || "[]");
+let teams = JSON.parse(localStorage.getItem("teams")||"[]");
+let matches = JSON.parse(localStorage.getItem("matches")||"[]");
 
+// ---- Gestion équipes ----
 function save() {
   localStorage.setItem("teams", JSON.stringify(teams));
   localStorage.setItem("matches", JSON.stringify(matches));
@@ -62,165 +59,147 @@ function save() {
 
 function addTeam() {
   const name = document.getElementById("teamName").value;
-  if (!name) return;
-  teams.push({ id: Date.now(), name });
-  document.getElementById("teamName").value = "";
-  save();
-  renderTeams();
-}
-
-function removeTeam(id) {
-  teams = teams.filter(t => t.id !== id);
-  save();
-  renderTeams();
+  if(!name) return;
+  teams.push({id: Date.now(), name});
+  document.getElementById("teamName").value="";
+  save(); renderTeams();
 }
 
 function generateTeams() {
-  const count = parseInt(document.getElementById("teamCount").value) || 4;
-  
-  if (count < 2) {
-    alert("Minimum 2 équipes requises");
-    return;
-  }
-  
-  if (count > 32) {
-    alert("Maximum 32 équipes");
-    return;
-  }
-  
-  teams = [];
-  for (let i = 1; i <= count; i++) {
-    teams.push({ id: Date.now() + i, name: `Équipe ${i}` });
-  }
-  
-  save();
-  renderTeams();
+  const count = parseInt(document.getElementById("teamCount").value)||4;
+  teams=[];
+  for(let i=1;i<=count;i++) teams.push({id:Date.now()+i,name:`Équipe ${i}`});
+  save(); renderTeams();
 }
 
 function clearTeams() {
-  if (confirm("Êtes-vous sûr de vouloir effacer toutes les équipes ?")) {
-    teams = [];
-    matches = [];
-    save();
-    renderTeams();
-    renderMatches();
+  if(confirm("Effacer toutes les équipes ?")){ 
+    teams=[]; matches=[]; save(); renderTeams(); renderMatches(); 
   }
 }
 
 function renderTeams() {
-  const ul = document.getElementById("teamList");
-  ul.innerHTML = "";
-  teams.forEach(t => {
-    const li = document.createElement("li");
-    li.innerHTML = `${t.name} <button onclick="editTeam(${t.id})">✏️</button> <button onclick="removeTeam(${t.id})">❌</button>`;
+  const ul=document.getElementById("teamList"); ul.innerHTML="";
+  teams.forEach(t=>{
+    const li=document.createElement("li");
+    li.innerHTML=`${t.name} <button onclick="editTeam(${t.id})">✏️</button>`;
     ul.appendChild(li);
   });
 }
 
 function editTeam(id) {
-  const team = teams.find(t => t.id === id);
-  if (!team) return;
-  
+  const team = teams.find(t=>t.id===id);
+  if(!team) return;
   const newName = prompt("Nouveau nom pour l'équipe:", team.name);
-  if (newName && newName.trim()) {
-    updateTeam(id, newName.trim());
-  }
+  if(newName && newName.trim()){ team.name=newName.trim(); save(); renderTeams(); renderMatches();}
 }
 
-function updateTeam(id, newName) {
-  const team = teams.find(t => t.id === id);
-  if (team) {
-    team.name = newName;
-    save();
-    renderTeams();
-    renderMatches();
-  }
-}
+// ---- Tournoi ----
+function shuffle(array){ return array.sort(()=>Math.random()-0.5); }
 
-function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
-}
-
-function generateTournament() {
-  matches = [];
+function generateTournament(){
+  matches=[];
   let shuffled = shuffle([...teams]);
-
-  // créer tour initial
-  for (let i = 0; i < shuffled.length; i += 2) {
-    matches.push({
-      id: Date.now() + i,
-      team1: shuffled[i],
-      team2: shuffled[i+1] || null,
-      winner: null,
-      bracket: "initial"
-    });
-  }
-
-  save();
-  renderMatches();
+  createMatches(shuffled, "initial", 1);
+  save(); renderMatches();
 }
 
-function setWinner(matchId, team) {
-  let match = matches.find(m => m.id === matchId);
-  if (!match || match.winner) return;
+// Génération des matchs pour un tour (Exempt unique si nombre impair)
+function createMatches(teamList, bracket, round){
+  let temp = [...teamList];
+  if(temp.length % 2 !== 0){
+    temp.push({id:-1, name:"Exempt"});
+  }
+  for(let i=0;i<temp.length;i+=2){
+    matches.push({id:Date.now()+i, team1:temp[i], team2:temp[i+1], winner:null, bracket, round});
+  }
+}
 
-  match.winner = team;
+// ---- Matchs ----
+function setWinner(matchId, team){
+  if(team.id===-1) return; // Exempt ne passe jamais
+  let match = matches.find(m=>m.id===matchId);
+  if(!match || match.winner || !match.team1 || !match.team2) return;
+  match.winner=team;
 
-  // déterminer perdant
-  let loser = (match.team1?.id === team.id) ? match.team2 : match.team1;
+  let loser=(match.team1.id===team.id)?match.team2:match.team1;
 
-  if (match.bracket === "initial") {
-    addToBracket(team, "high");
-    if (loser) addToBracket(loser, "low");
+  // Générer tour suivant uniquement avec vrais gagnants
+  if(match.bracket==="initial"){ 
+    advanceToNext([team], "high", 1);
+    if(loser.id!==-1) advanceToNext([loser], "low", 1);
   } else {
-    addToBracket(team, match.bracket);
+    advanceToNext([team], match.bracket, match.round+1);
   }
 
-  save();
-  renderMatches();
+  checkFinal();
+  save(); renderMatches();
 }
 
-function addToBracket(team, bracket) {
-  let pending = matches.find(m => 
-    m.bracket === bracket && (!m.team2)
-  );
+// Crée un nouveau tour avec tous les gagnants réels
+function advanceToNext(winners, bracket, round){
+  let existing = matches.filter(m=>m.bracket===bracket && m.round===round)
+                        .map(m=>[m.team1,m.team2])
+                        .flat()
+                        .filter(t=>t && t.id!==-1); // Exclure Exempt
 
-  if (pending) {
-    pending.team2 = team;
-  } else {
-    matches.push({
-      id: Date.now() + Math.random(),
-      team1: team,
-      team2: null,
-      winner: null,
-      bracket
-    });
+  winners.forEach(w=>existing.push(w));
+
+  // Si nombre impair, ajouter un seul Exempt
+  if(existing.length %2 !==0) existing.push({id:-1, name:"Exempt"});
+
+  // Supprimer ancien tour
+  matches = matches.filter(m=>!(m.bracket===bracket && m.round===round));
+
+  // Créer matchs par paires
+  for(let i=0;i<existing.length;i+=2){
+    matches.push({id:Date.now()+Math.random(), team1:existing[i], team2:existing[i+1], winner:null, bracket, round});
   }
 }
 
-function renderMatches() {
-  ["initial", "high", "low"].forEach(type => {
-    const div = document.getElementById(type);
-    div.innerHTML = "";
+// ---- Grande finale ----
+function checkFinal(){
+  let highWinner=matches.filter(m=>m.bracket==="high" && m.winner && !nextExists(m));
+  let lowWinner=matches.filter(m=>m.bracket==="low" && m.winner && !nextExists(m));
+  if(highWinner.length===1 && lowWinner.length===1){
+    let finalExists=matches.find(m=>m.bracket==="final");
+    if(!finalExists){
+      matches.push({id:Date.now(), team1:highWinner[0].winner, team2:lowWinner[0].winner, winner:null, bracket:"final", round:1});
+    }
+  }
+}
 
-    matches.filter(m => m.bracket === type).forEach(m => {
-      const el = document.createElement("div");
-      el.className = "match";
+function nextExists(match){ return matches.some(m=>m.team1?.id===match.winner?.id || m.team2?.id===match.winner?.id); }
 
-      el.innerHTML = `
-        <div onclick='setWinner(${m.id}, ${JSON.stringify(m.team1)})'
-             class="${m.winner?.id === m.team1?.id ? 'winner' : ''}">
-          ${m.team1 ? m.team1.name : '---'}
-        </div>
-        <div onclick='setWinner(${m.id}, ${JSON.stringify(m.team2)})'
-             class="${m.winner?.id === m.team2?.id ? 'winner' : ''}">
-          ${m.team2 ? m.team2.name : '---'}
-        </div>
+// ---- Affichage ----
+function renderBracket(type){
+  const container=document.getElementById(type);
+  container.innerHTML="";
+  let rounds=[...new Set(matches.filter(m=>m.bracket===type).map(m=>m.round))].sort((a,b)=>a-b);
+  rounds.forEach(r=>{
+    let col=document.createElement("div"); col.className="round";
+    let title=document.createElement("h4"); title.innerText="Tour "+r; col.appendChild(title);
+    matches.filter(m=>m.bracket===type && m.round===r).forEach(m=>{
+      let disabled = (!m.team1||!m.team2);
+      let div=document.createElement("div"); div.className="match "+(type==="final"?"final":"");
+      div.innerHTML=`
+        <div class="team ${m.winner?.id===m.team1?.id?'winner':''} ${disabled?'disabled':''}"
+             onclick='setWinner(${m.id}, ${JSON.stringify(m.team1)})'>${m.team1?m.team1.name:'---'}</div>
+        <div class="team ${m.winner?.id===m.team2?.id?'winner':''} ${disabled?'disabled':''}"
+             onclick='setWinner(${m.id}, ${JSON.stringify(m.team2)})'>${m.team2?m.team2.name:'---'}</div>
       `;
-
-      div.appendChild(el);
+      col.appendChild(div);
     });
+    container.appendChild(col);
   });
+}
+
+function renderMatches(){ renderBracket("initial"); renderBracket("high"); renderBracket("low"); renderBracket("final"); }
+
+// ---- Plein écran ----
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
 }
 
 renderTeams();
