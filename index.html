@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tournoi Robots</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+h2 { margin-top: 30px; }
+button { margin: 5px; padding: 5px 10px; cursor: pointer; }
+.match { border: 1px solid #ccc; padding: 10px; margin: 5px; }
+.winner { background: #c8f7c5; }
+.container { display: flex; gap: 20px; flex-wrap: wrap; }
+.column { min-width: 300px; }
+</style>
+</head>
+
+<body>
+
+<h1>🤖 Tournoi de robots</h1>
+
+<h2>Équipes</h2>
+<input id="teamName" placeholder="Nom équipe">
+<button onclick="addTeam()">Ajouter</button>
+<ul id="teamList"></ul>
+
+<button onclick="generateTournament()">🎲 Générer le tournoi</button>
+
+<div class="container">
+  <div class="column">
+    <h2>Tour initial</h2>
+    <div id="initial"></div>
+  </div>
+  <div class="column">
+    <h2>Poule haute</h2>
+    <div id="high"></div>
+  </div>
+  <div class="column">
+    <h2>Poule basse</h2>
+    <div id="low"></div>
+  </div>
+</div>
+
+<script>
+let teams = JSON.parse(localStorage.getItem("teams") || "[]");
+let matches = JSON.parse(localStorage.getItem("matches") || "[]");
+
+function save() {
+  localStorage.setItem("teams", JSON.stringify(teams));
+  localStorage.setItem("matches", JSON.stringify(matches));
+}
+
+function addTeam() {
+  const name = document.getElementById("teamName").value;
+  if (!name) return;
+  teams.push({ id: Date.now(), name });
+  document.getElementById("teamName").value = "";
+  save();
+  renderTeams();
+}
+
+function removeTeam(id) {
+  teams = teams.filter(t => t.id !== id);
+  save();
+  renderTeams();
+}
+
+function renderTeams() {
+  const ul = document.getElementById("teamList");
+  ul.innerHTML = "";
+  teams.forEach(t => {
+    const li = document.createElement("li");
+    li.innerHTML = `${t.name} <button onclick="removeTeam(${t.id})">❌</button>`;
+    ul.appendChild(li);
+  });
+}
+
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
+
+function generateTournament() {
+  matches = [];
+  let shuffled = shuffle([...teams]);
+
+  // créer tour initial
+  for (let i = 0; i < shuffled.length; i += 2) {
+    matches.push({
+      id: Date.now() + i,
+      team1: shuffled[i],
+      team2: shuffled[i+1] || null,
+      winner: null,
+      bracket: "initial"
+    });
+  }
+
+  save();
+  renderMatches();
+}
+
+function setWinner(matchId, team) {
+  let match = matches.find(m => m.id === matchId);
+  if (!match || match.winner) return;
+
+  match.winner = team;
+
+  // déterminer perdant
+  let loser = (match.team1?.id === team.id) ? match.team2 : match.team1;
+
+  if (match.bracket === "initial") {
+    addToBracket(team, "high");
+    if (loser) addToBracket(loser, "low");
+  } else {
+    addToBracket(team, match.bracket);
+  }
+
+  save();
+  renderMatches();
+}
+
+function addToBracket(team, bracket) {
+  let pending = matches.find(m => 
+    m.bracket === bracket && (!m.team2)
+  );
+
+  if (pending) {
+    pending.team2 = team;
+  } else {
+    matches.push({
+      id: Date.now() + Math.random(),
+      team1: team,
+      team2: null,
+      winner: null,
+      bracket
+    });
+  }
+}
+
+function renderMatches() {
+  ["initial", "high", "low"].forEach(type => {
+    const div = document.getElementById(type);
+    div.innerHTML = "";
+
+    matches.filter(m => m.bracket === type).forEach(m => {
+      const el = document.createElement("div");
+      el.className = "match";
+
+      el.innerHTML = `
+        <div onclick='setWinner(${m.id}, ${JSON.stringify(m.team1)})'
+             class="${m.winner?.id === m.team1?.id ? 'winner' : ''}">
+          ${m.team1 ? m.team1.name : '---'}
+        </div>
+        <div onclick='setWinner(${m.id}, ${JSON.stringify(m.team2)})'
+             class="${m.winner?.id === m.team2?.id ? 'winner' : ''}">
+          ${m.team2 ? m.team2.name : '---'}
+        </div>
+      `;
+
+      div.appendChild(el);
+    });
+  });
+}
+
+renderTeams();
+renderMatches();
+</script>
+
+</body>
+</html>
