@@ -19,8 +19,19 @@ button { margin: 5px; padding: 5px 10px; cursor: pointer; }
 <h1>🤖 Tournoi de robots</h1>
 
 <h2>Équipes</h2>
-<input id="teamName" placeholder="Nom équipe">
-<button onclick="addTeam()">Ajouter</button>
+<div style="margin-bottom: 15px;">
+  <h3>Ajouter équipes manuellement</h3>
+  <input id="teamName" placeholder="Nom équipe">
+  <button onclick="addTeam()">Ajouter</button>
+</div>
+
+<div style="margin-bottom: 15px;">
+  <h3>Ou générer des équipes</h3>
+  <input id="teamCount" type="number" min="2" max="32" value="4" placeholder="Nombre d'équipes">
+  <button onclick="generateTeams()">Générer équipes</button>
+  <button onclick="clearTeams()" style="background-color: #ffcccb;">Effacer tout</button>
+</div>
+
 <ul id="teamList"></ul>
 
 <button onclick="generateTournament()">🎲 Générer le tournoi</button>
@@ -64,14 +75,66 @@ function removeTeam(id) {
   renderTeams();
 }
 
+function generateTeams() {
+  const count = parseInt(document.getElementById("teamCount").value) || 4;
+  
+  if (count < 2) {
+    alert("Minimum 2 équipes requises");
+    return;
+  }
+  
+  if (count > 32) {
+    alert("Maximum 32 équipes");
+    return;
+  }
+  
+  teams = [];
+  for (let i = 1; i <= count; i++) {
+    teams.push({ id: Date.now() + i, name: `Équipe ${i}` });
+  }
+  
+  save();
+  renderTeams();
+}
+
+function clearTeams() {
+  if (confirm("Êtes-vous sûr de vouloir effacer toutes les équipes ?")) {
+    teams = [];
+    matches = [];
+    save();
+    renderTeams();
+    renderMatches();
+  }
+}
+
 function renderTeams() {
   const ul = document.getElementById("teamList");
   ul.innerHTML = "";
   teams.forEach(t => {
     const li = document.createElement("li");
-    li.innerHTML = `${t.name} <button onclick="removeTeam(${t.id})">❌</button>`;
+    li.innerHTML = `${t.name} <button onclick="editTeam(${t.id})">✏️</button> <button onclick="removeTeam(${t.id})">❌</button>`;
     ul.appendChild(li);
   });
+}
+
+function editTeam(id) {
+  const team = teams.find(t => t.id === id);
+  if (!team) return;
+  
+  const newName = prompt("Nouveau nom pour l'équipe:", team.name);
+  if (newName && newName.trim()) {
+    updateTeam(id, newName.trim());
+  }
+}
+
+function updateTeam(id, newName) {
+  const team = teams.find(t => t.id === id);
+  if (team) {
+    team.name = newName;
+    save();
+    renderTeams();
+    renderMatches();
+  }
 }
 
 function shuffle(array) {
